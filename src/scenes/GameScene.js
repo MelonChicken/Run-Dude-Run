@@ -9,6 +9,7 @@ import ScrollingWorld from '../level/ScrollingWorld.js';
 
 import { submitGameSession, registerPlayer } from "../api/leaderboard.js";
 import { getPlayerId } from "../utils/storage.js";
+import {calculateScore} from "../utils/scoring";
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
@@ -20,7 +21,13 @@ export default class GameScene extends Phaser.Scene {
     this.player = new Player(this, 100, 250);
     // for temperary escape key to terminate game and see statistics
     this.escapeKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
-    // Collisions
+    // for count how many pickups occured
+    this.pickupCount = 0;
+    // counting how manytime the player hit enemy
+    this.hitCount = 0;
+    this.startTime = Date.now();
+
+      // Collisions
     this.physics.add.collider(
       this.player,
       this.world.ground
@@ -81,12 +88,13 @@ export default class GameScene extends Phaser.Scene {
     } else if (pickup instanceof JumpPickup) {
       player.grantExtraJump();
     }
-
+    this.pickupCount++;
     pickup.destroy();
   }
 
   handleEnemyCollision(player, enemy) {
     console.log('Hit enemy!');
+    this.hitCount++;
   }
 
   platformCollisionCheck(player, platform) {
@@ -108,18 +116,25 @@ export default class GameScene extends Phaser.Scene {
     // Temperal Escape to end game and see statistics
     endGame() {
         const playTime = Math.floor((Date.now() - this.startTime) / 1000);
-
+        const score = calculateScore(
+            playTime,
+            this.hitCount,
+            this.pickupCount,
+            this.player.stats.moveSpeed,
+            this.player.maxJumps,
+            this.player.stats.health
+        );
         const sessionData = {
             player_id: getPlayerId(),
-            score: this.player.stats.health,
             play_time: playTime,
+            score: score ?? 0,
             hits: this.hitCount,
             pickups: this.pickupCount,
-            max_speed: this.maxSpeedReached,
-            max_jump_power: this.maxJumpPower,
+            max_speed: this.player.stats.moveSpeed,
+            max_jump_power: this.player.maxJumps,
             health_left: this.player.stats.health
         };
-
+        console.log(sessionData);
         submitGameSession(sessionData);
 
         this.scene.start("MenuScene");
