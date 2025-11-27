@@ -83,23 +83,39 @@ export default class MenuScene extends Phaser.Scene {
             fontSize: "24px",
             fill: "#ffffff"
         });
+        await this.refreshLeaderboard();
+
+        this.events.on("wake", async () => {
+            await this.refreshLeaderboard();
+        });
+    }
+
+    async refreshLeaderboard() {
+        if (this.leaderboardTexts) {
+            this.leaderboardTexts.forEach(t => t.destroy());
+        }
+        this.leaderboardTexts = [];
 
         const { data, error } = await fetchLeaderboard(10);
 
         if (error) {
             console.error("Failed to load leaderboard:", error);
-        } else {
-            data.forEach((row, i) => {
-                const nickname = row.players?.nickname || "Unknown";
-                const score = row.score;
-
-                this.add.text(
-                    350,
-                    160 + i * 24,
-                    `${i + 1}. ${nickname} — ${score}`,
-                    { fontSize: "20px", fill: "#ffffff" }
-                );
-            });
+            return;
         }
+
+        data.forEach((row, i) => {
+            const nickname = row.players?.nickname || "Unknown";
+            const score = row.score;
+
+            const text = this.add.text(
+                350,
+                160 + i * 24,
+                `${i + 1}. ${nickname} — ${score}`,
+                { fontSize: "20px", fill: "#ffffff" }
+            );
+
+            this.leaderboardTexts.push(text);
+        });
     }
+
 }
