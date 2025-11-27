@@ -1,7 +1,8 @@
 import Phaser from "phaser";
-import { registerPlayer, fetchLeaderboard } from "../api/leaderboard.js";
+import { registerPlayer } from "../api/leaderboard.js";
 import { getPlayerId, setPlayerInfo } from "../utils/storage.js";
 import { NICKNAME_INPUT_STYLE } from "../config";
+import {supabase} from "../api/supabaseClient";
 
 export default class MenuScene extends Phaser.Scene {
     constructor() {
@@ -90,20 +91,44 @@ export default class MenuScene extends Phaser.Scene {
         });
     }
 
-    async refreshLeaderboard() {
+    async refreshLeaderboard(limit = 20) {
+        // clear the prior text
         if (this.leaderboardTexts) {
             this.leaderboardTexts.forEach(t => t.destroy());
         }
         this.leaderboardTexts = [];
 
-        const { data, error } = await fetchLeaderboard(10);
+        // Get al session results from database ordered by score descending
+        const { data, error } = await supabase
+            .from("game_sessions")
+            .select(`
+            player_id,
+            score,
+            players (nickname)
+        `)
+            .order("score", { ascending: false });
 
         if (error) {
-            console.error("Failed to load leaderboard:", error);
+            console.error("Failed to fetch leaderboard:", error);
             return;
         }
 
-        data.forEach((row, i) => {
+        // 1) Based on player_id, only maintain the highest score
+        const unique = [];
+        const seen = new Set();
+
+        for (const row of data) {
+            if (!seen.has(row.player_id)) {
+                seen.add(row.player_id);
+                unique.push(row);
+            }
+        }
+
+        // 2) Only show Top 20 scores
+        const top = unique.slice(0, limit);
+
+        // 3) indicate in the UI
+        top.forEach((row, i) => {
             const nickname = row.players?.nickname || "Unknown";
             const score = row.score;
 
@@ -111,7 +136,10 @@ export default class MenuScene extends Phaser.Scene {
                 350,
                 160 + i * 24,
                 `${i + 1}. ${nickname} — ${score}`,
-                { fontSize: "20px", fill: "#ffffff" }
+                {
+                    fontSize: "20px",
+                    fill: "#ffffff"
+                }
             );
 
             this.leaderboardTexts.push(text);
