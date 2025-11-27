@@ -89,7 +89,7 @@ export default class MenuScene extends Phaser.Scene {
             "keydown",
             (e) => {
                 if (document.activeElement === nicknameInput) {
-                    // WASD만 Phaser에게 전달되지 않게 막기
+                    // Prevent only the WASD keys from being passed to Phaser (if more key are used to operate game, we should put keys into it)
                     if (["w", "a", "s", "d", "W", "A", "S", "D"].includes(e.key)) {
                         e.stopImmediatePropagation();
                     }
