@@ -2,7 +2,7 @@ import Phaser from "phaser";
 import { registerPlayer } from "../api/leaderboard.js";
 import { getPlayerId, setPlayerInfo } from "../utils/storage.js";
 import { NICKNAME_INPUT_STYLE } from "../config";
-import {supabase} from "../api/supabaseClient";
+import { supabase } from "../api/supabaseClient";
 
 export default class MenuScene extends Phaser.Scene {
     constructor() {
@@ -10,6 +10,13 @@ export default class MenuScene extends Phaser.Scene {
     }
 
     async create() {
+
+        // -------------------------------------------------
+        // 1) Block the canvas from stealing input focus
+        // -------------------------------------------------
+        this.game.canvas.setAttribute("tabindex", "-1");
+        this.game.canvas.blur();
+
 
         // ============================
         // Start game unified function
@@ -23,10 +30,7 @@ export default class MenuScene extends Phaser.Scene {
 
             const playerId = getPlayerId();
             setPlayerInfo(playerId, nickname);
-
-            const result = await registerPlayer(playerId, nickname);
-            console.log("REGISTER_PLAYER:", result);
-
+            await registerPlayer(playerId, nickname);
             try {
                 nicknameInput.remove();
             } catch (_) {}
@@ -43,6 +47,7 @@ export default class MenuScene extends Phaser.Scene {
             fill: "#ffffff"
         });
 
+
         // --------------------------
         // Nickname input DOM
         // --------------------------
@@ -55,7 +60,20 @@ export default class MenuScene extends Phaser.Scene {
         nicknameInput.style.fontSize = NICKNAME_INPUT_STYLE.fontSize;
         nicknameInput.style.zIndex = NICKNAME_INPUT_STYLE.zIndex;
 
-        // ENTER KEY SUPPORT
+        document.body.appendChild(nicknameInput);
+        nicknameInput.focus();
+
+        // -------------------------------------------------
+        // 2) Since the canvas steals focus right after the scene transition,
+        //       force refocusing on the input after a short delay
+        // -------------------------------------------------
+        setTimeout(() => {
+            nicknameInput.focus();
+            nicknameInput.select();
+        }, 150);
+
+
+        // Enter key starts the game
         nicknameInput.addEventListener("keydown", async (event) => {
             if (event.key === "Enter") {
                 event.preventDefault();
@@ -63,7 +81,23 @@ export default class MenuScene extends Phaser.Scene {
             }
         });
 
-        document.body.appendChild(nicknameInput);
+
+        // -------------------------------------------------
+        // 3) Completely block Phaser key input while the input is focused
+        // -------------------------------------------------
+        window.addEventListener(
+            "keydown",
+            (e) => {
+                if (document.activeElement === nicknameInput) {
+                    // Prevent only the WASD keys from being passed to Phaser (if more key are used to operate game, we should put keys into it)
+                    if (["w", "a", "s", "d", "W", "A", "S", "D"].includes(e.key)) {
+                        e.stopImmediatePropagation();
+                    }
+                }
+            },
+            true
+        );
+
 
         // --------------------------
         // Start button
@@ -77,6 +111,7 @@ export default class MenuScene extends Phaser.Scene {
             await startGame();
         });
 
+
         // --------------------------
         // Leaderboard Section
         // --------------------------
@@ -84,26 +119,28 @@ export default class MenuScene extends Phaser.Scene {
             fontSize: "24px",
             fill: "#ffffff"
         });
+
         await this.refreshLeaderboard();
 
         this.events.on("wake", async () => {
             await this.refreshLeaderboard();
         });
     }
-    /**
-     * Fetch top scores from the leaderboard.
-     * @param {number} limit - Number of entries to return.
-     */
-    async refreshLeaderboard(limit = 20) {
-        // Clear prior text
+
+
+
+    // ==================================================================
+    // Leaderboard
+    // ==================================================================
+
+    async refreshLeaderboard(limit = 10) {
         if (this.leaderboardTexts) {
             this.leaderboardTexts.forEach(t => t.destroy());
         }
         this.leaderboardTexts = [];
 
-        const playerId = getPlayerId(); // ← 내 UUID 가져오기
+        const playerId = getPlayerId();
 
-        // Load all session records from Supabase ordered by scores descending
         const { data, error } = await supabase
             .from("game_sessions")
             .select(`
@@ -118,7 +155,7 @@ export default class MenuScene extends Phaser.Scene {
             return;
         }
 
-        // 1) Ensure only the highest score of each player remain
+        // Unique players only
         const unique = [];
         const seen = new Set();
 
@@ -129,30 +166,24 @@ export default class MenuScene extends Phaser.Scene {
             }
         }
 
-        // 2) Only user Top N Records
         const top = unique.slice(0, limit);
 
-        // 3) Medal Icon
-        const medals = ["🥇", "🥈", "🥉"]; // Top 3
+        const medals = ["🥇", "🥈", "🥉"];
 
-        // 4) print leaderboard
         top.forEach((row, i) => {
             const nickname = row.players?.nickname || "Unknown";
             const score = row.score;
 
-            // indicate medal or number of the place
             const rankLabel = i < 3 ? medals[i] : `${i + 1}.`;
 
-            // basic
             const style = {
                 fontSize: "20px",
                 fill: "#ffffff"
             };
 
-            // if the information is from the current session
             const isMe = row.player_id === playerId;
             if (isMe) {
-                style.fill = "#ffff00"; // yellow
+                style.fill = "#ffff00";
             }
 
             const text = this.add.text(
@@ -162,7 +193,6 @@ export default class MenuScene extends Phaser.Scene {
                 style
             );
 
-            // highlight the background
             if (isMe) {
                 const bg = this.add.rectangle(
                     350 - 10,
@@ -172,15 +202,11 @@ export default class MenuScene extends Phaser.Scene {
                     0xffff00,
                     0.25
                 ).setOrigin(0, 0.5);
-
-                // set text depth on the top
                 text.setDepth(1);
-
                 this.leaderboardTexts.push(bg);
             }
 
             this.leaderboardTexts.push(text);
         });
     }
-
 }
