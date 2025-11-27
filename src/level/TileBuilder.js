@@ -1,51 +1,69 @@
+// src/level/TileBuilder.js
+
 export default class TileBuilder {
   constructor(scene, tileSize = 32) {
     this.scene = scene;
     this.T = tileSize;
-
-    // groups where tiles will go
-    this.ground = scene.physics.add.staticGroup();
-    this.platforms = scene.physics.add.staticGroup();
   }
 
-  // === GROUND: grass top + mud layers ===
-  buildGround(rows = 3) {
-    const width = this.scene.scale.width;
-    const columns = Math.ceil(width / this.T) + 1;
+  /**
+   * Build one vertical column of ground:
+   * row 0 = grass, rows 1..n = mud
+   * Returns an array of created tiles.
+   */
+  buildGroundColumn(group, x, topY, rows = 3) {
+    const tiles = [];
 
-    const topY = this.scene.scale.height - rows * this.T;
+    for (let row = 0; row < rows; row++) {
+      const key = row === 0 ? 'grass_tile' : 'mud_tile';
+      const tile = group.create(
+        x,
+        topY + row * this.T,
+        key
+      );
 
-    for (let x = 0; x < columns; x++) {
-      const worldX = x * this.T;
-
-      // Grass tile top
-      this._placeTile(this.ground, worldX, topY, 'grass_tile');
-
-      // Mud below (rows-1 layers)
-      for (let y = 1; y < rows; y++) {
-        this._placeTile(this.ground, worldX, topY + y * this.T, 'mud_tile');
-      }
+      tile.setOrigin(0, 0);
+      tiles.push(tile);
     }
+
+    return tiles;
   }
 
-  // === WOOD PLATFORM: end – mid – mid – flipped end ===
-  buildWoodPlatform(startX, y, length = 4) {
+  /**
+   * Build a wood platform of `length` tiles.
+   * Returns an array of created tiles.
+   */
+  buildWoodPlatform(group, startX, y, length = 4) {
+    const tiles = [];
+
     // left end
-    this._placeTile(this.platforms, startX, y, 'platform_wood_end');
+    tiles.push(this._placeTile(group, startX, y, 'platform_wood_end', false));
 
     // mid pieces
     for (let i = 1; i < length - 1; i++) {
-      this._placeTile(this.platforms, startX + i * this.T, y, 'platform_wood');
+      tiles.push(
+        this._placeTile(group, startX + i * this.T, y, 'platform_wood', false)
+      );
     }
 
     // right end (flipped)
-    this._placeTile(this.platforms, startX + (length - 1) * this.T, y, 'platform_wood_end', true);
+    tiles.push(
+      this._placeTile(
+        group,
+        startX + (length - 1) * this.T,
+        y,
+        'platform_wood_end',
+        true
+      )
+    );
+
+    return tiles;
   }
 
-  // === internal helper ===
   _placeTile(group, x, y, key, flipX = false) {
-    const tile = group.create(x, y, key).setOrigin(0, 0).setFlipX(flipX);
-    tile.refreshBody();
+    const tile = group.create(x, y, key);
+    tile.setOrigin(0, 0);
+    tile.setFlipX(flipX);
     return tile;
   }
 }

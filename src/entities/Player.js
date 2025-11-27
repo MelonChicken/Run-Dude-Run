@@ -1,13 +1,18 @@
 import Phaser from 'phaser';
 
-export default class Player extends Phaser.GameObjects.Rectangle {
+export default class Player extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, x, y) {
-    super(scene, x, y, 40, 40, 0xff0000);
+    super(scene, x, y, 'player'); // use the aseprite texture key
 
+    // add to scene & enable physics
     scene.add.existing(this);
     scene.physics.add.existing(this);
 
-    this.body.setCollideWorldBounds(true);
+    this.setCollideWorldBounds(true);
+
+    // Match the frame size from your JSON (32x48)
+    this.body.setSize(32, 48);
+    this.body.setOffset(0, 0); // adjust if needed
 
     // --- Player Stats ---
     this.stats = {
@@ -29,6 +34,9 @@ export default class Player extends Phaser.GameObjects.Rectangle {
     this.keyD = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
     this.keyW = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
     this.keyS = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S);
+
+    // Start in idle
+    this.anims.play('Idle');
   }
 
   update() {
@@ -40,8 +48,10 @@ export default class Player extends Phaser.GameObjects.Rectangle {
 
     if (left) {
       body.setVelocityX(-this.stats.moveSpeed);
+      this.setFlipX(true);              // face left
     } else if (right) {
       body.setVelocityX(this.stats.moveSpeed);
+      this.setFlipX(false);             // face right
     } else {
       body.setVelocityX(0);
     }
@@ -62,14 +72,13 @@ export default class Player extends Phaser.GameObjects.Rectangle {
       body.setVelocityY(this.stats.jumpVelocity);
       this.jumpCount++;
 
-      // If using extra jump, remove ability once used
       if (this.extraJumpActive && this.jumpCount === this.maxJumps) {
         this.extraJumpActive = false;
         this.maxJumps = this.baseMaxJumps;
       }
     }
 
-    // down movement
+    // down movement (drop & fast fall)
     if (Phaser.Input.Keyboard.JustDown(this.keyS)) {
       this.dropThrough = true;
       this.scene.time.delayedCall(200, () => {
@@ -79,6 +88,16 @@ export default class Player extends Phaser.GameObjects.Rectangle {
 
     if (this.keyS.isDown && !this.body.blocked.down) {
       this.body.setVelocityY(500); // fast fall
+    }
+
+    // --- Animation logic ---
+    if (!onGround) {
+      // No jump anim in your sheet, so reuse Running when in air
+      this.anims.play('Running', true);
+    } else if (body.velocity.x !== 0) {
+      this.anims.play('Running', true);
+    } else {
+      this.anims.play('Idle', true);
     }
   }
 
