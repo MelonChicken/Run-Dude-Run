@@ -73,17 +73,14 @@ export default class GameScene extends Phaser.Scene {
     this.updateStatsText();
   }
 
-  update() {
-    this.player.update();
-    this.world.update();
-    //fix later (issue created)
-    this.updateStatsText();
-    if (Phaser.Input.Keyboard.JustDown(this.escapeKey)) {
-        this.endGame();
-    }
+update() {
+  this.player.update();
+  this.world.update();
 
-
+  if (Phaser.Input.Keyboard.JustDown(this.escapeKey)) {
+    this.endGame();
   }
+}
 
   handlePickup(player, pickup) {
     if (pickup instanceof HealthPickup) {
@@ -95,6 +92,8 @@ export default class GameScene extends Phaser.Scene {
     }
     this.pickupCount++;
     pickup.destroy();
+
+    this.updateStatsText();
   }
 
   handleEnemyCollision(player, enemy) {
