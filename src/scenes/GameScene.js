@@ -97,8 +97,19 @@ update() {
   }
 
   handleEnemyCollision(player, enemy) {
-    console.log('Hit enemy!');
-    this.hitCount++;
+
+
+      const isAbove = player.body.bottom <= enemy.body.top;
+
+      if(isAbove){
+        console.log('Killed enemy!');
+        this.hitCount++;
+        enemy.disableBody(true, true);
+    } else {
+        console.log('Bumped into the enemy!');
+        this.player.stats.health -= 50;
+    }
+    this.updateStatsText();
   }
 
   platformCollisionCheck(player, platform) {
