@@ -166,6 +166,37 @@ export default class MenuScene extends Phaser.Scene {
             }
         }
 
+        // ================================================
+        // PERSONAL INFO
+        // ================================================
+        let myRank = null;
+        let myBestScore = null;
+
+        for (let i = 0; i < unique.length; i++) {
+            const row = unique[i];
+            if (row.player_id === playerId) {
+                myRank = i + 1;
+                myBestScore = row.score;
+                break;
+            }
+        }
+        if (this.personalInfoTexts) {
+            this.personalInfoTexts.forEach(t => t.destroy());
+        }
+        this.personalInfoTexts = [];
+
+        const baseY = 170;
+
+        const bestScoreText = this.add.text(
+            350,
+            baseY - 80,
+            `Your Best: ${myBestScore ?? "-"} points & Your Rank: ${myRank ? "#" + myRank : "-"}/${unique.length}`,
+            { fontSize: "20px", fill: "#ffffff" }
+        );
+
+        this.personalInfoTexts.push(bestScoreText);
+
+
         const top = unique.slice(0, limit);
 
         const medals = ["🥇", "🥈", "🥉"];
