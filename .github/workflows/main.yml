@@ -36,7 +36,8 @@ jobs:
         run: npm install
 
       - name: Build Vite app
-        run: npm run build
+        # 🔴 여기에서 base를 GitHub Pages 프로젝트 경로로 강제
+        run: npm run build -- --base=/Run-Dude-Run/
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
